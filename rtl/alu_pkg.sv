@@ -1,10 +1,11 @@
-package alu_operations_pkg;
+package alu_operations_pkg; // Package as these are all more or less shared between each operation file and the top file
 
-	parameter int DATA_WIDTH = 32;
-	parameter int EXPONENT_WIDTH = 8;
-	parameter int MANTISSA_WIDTH = 23;
-	parameter int BIAS = 12;
-
+	parameter int DATA_WIDTH = 32; // Width of operands and result
+	parameter int EXPONENT_WIDTH = 8; // Width of the whole number 2^n part of the operands and result
+	parameter int MANTISSA_WIDTH = 23; // Width of the decimals of the operands and result
+	parameter int BIAS = 127; // For shifting negative numbers per IEEE 754 spec 
+	
+	// enum to represent ALU operations
 	typedef enum logic [2:0] {
 		ADD = 3'b000,
 		SUB = 3'b001,
@@ -12,7 +13,8 @@ package alu_operations_pkg;
 		DIV = 3'b011,
 		SQRT = 3'b100	
 	} alu_operations_e;
-
+	
+	// Struct to demonstrate different pieces of the operands
 	typedef struct packed {
 		logic sign;
 		logic [EXPONENT_WIDTH-1:0] exponent;

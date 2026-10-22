@@ -1,6 +1,6 @@
 import alu_pkg::*;
 
-module multiplier(
+module multiplier( // Module performs multiplicaton on two single-precision floats
 	input logic [DATA_WIDTH-1:0] operandOne,
 	input logic [DATA_WIDTH-1:0] operandTwo,
 	input alu_operations_e operation,

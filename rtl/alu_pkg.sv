@@ -19,5 +19,5 @@ package alu_operations_pkg; // Package as these are all more or less shared betw
 		logic sign;
 		logic [EXPONENT_WIDTH-1:0] exponent;
 		logic [EXPONENT_WIDTH-1:0] mantissa;
-	} operand_partitions_t;
+	} operand_format_t;
 end package;

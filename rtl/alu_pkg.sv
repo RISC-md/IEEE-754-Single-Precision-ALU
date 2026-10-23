@@ -5,6 +5,9 @@ package alu_operations_pkg; // Package as these are all more or less shared betw
 	parameter int MANTISSA_WIDTH = 23; // Width of the decimals of the operands and result
 	parameter int BIAS = 127; // For shifting negative numbers per IEEE 754 spec 
 	
+	parameter int EXPONENT_WIDTH_NEW = EXPONENT_WIDTH - 1;
+	parameter int MANTISSA_WIDTH_NEW = MANTISSA_WIDTH - 1;
+
 	// enum to represent ALU operations
 	typedef enum logic [2:0] {
 		ADD = 3'b000,

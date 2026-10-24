@@ -129,31 +129,33 @@ module adder( // Module performs addition and subtraction on two single-precisio
 		operandTwoFormatted = '0;
 		prependedMantissaOne = '0;
 		prependedMantissaTwo = '0;
-		leadZero = '0;
+		leadingZero = '0;
 		if (enable) begin
 			operandOneFormatted.sign = operandOne[DATA_WIDTH - 1];
 			operandTwoFormatted.sign = operandTwo[DATA_WIDTH - 1];
 
-			operandOneFormatted.exponent = operandOne[DATA_WIDTH - 2 -: EXPONENT_WIDTH_NEW];
-			operandTwoFormatted.exponent = operandTwo[DATA_WIDTH - 2 -: EXPONENT_WIDTH_NEW];
+			operandOneFormatted.exponent = operandOne[DATA_WIDTH - 2 -: EXPONENT_WIDTH];
+			operandTwoFormatted.exponent = operandTwo[DATA_WIDTH - 2 -: EXPONENT_WIDTH];
 
-			operandOneFormatted.mantissa = operandOne[DATA_WIDTH - 2 - EXPONENT_WIDTH -: MANTISSA_WIDTH_NEW];
-			operandTwoFormatted.mantissa = operandTwo[DATA_WIDTH - 2 - EXPONENT_WIDTH -: MANTISSA_WIDTH_NEW];
+			operandOneFormatted.mantissa = operandOne[DATA_WIDTH - 2 - EXPONENT_WIDTH - 1 -: MANTISSA_WIDTH];
+			operandTwoFormatted.mantissa = operandTwo[DATA_WIDTH - 2 - EXPONENT_WIDTH - 1 -: MANTISSA_WIDTH];
 
-			prependedMantissaOne = {1'b1, operandOneFormatted.exponent};
-			prependedMantissaTwo = {1'b1, operandTwoFormatted.exponent};
+			prependedMantissaOne = {1'b1, operandOneFormatted.mantissa};
+			prependedMantissaTwo = {1'b1, operandTwoFormatted.mantissa};
 
-			if (base == operandOneFormatted.exponent && base != operandTwoFormatted) begin 
+			if (base == operandOneFormatted.exponent && base != operandTwoFormatted.exponent) begin 
 				prependedMantissaTwo = prependedMantissaTwo >> exponentDifference;
 				int i = 0;
 				while (prependedMantissaTwo[MANTISSA_WIDTH-i] == 1'b0 && i <= MANTISSA_WIDTH) begin 
 					leadingZero++;
+					i++;
 				end
 			end else if (base == operandTwoFormatted.exponent && base != operandOneFormatted.exponent) begin 
 				prependedMantissaOne = prependedMantissaOne >> exponentDifference;
 				int i = 0;
 				while (prependedMantissaOne[MANTISSA_WIDTH-i] == 1'b0 && i <= MANTISSA_WIDTH) begin 
 					leadingZero++;
+					i++;
 				end
 			end
 		end

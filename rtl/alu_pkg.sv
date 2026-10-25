@@ -23,10 +23,10 @@ package alu_pkg; // Package as these are all more or less shared between each op
 
 	// Struct for exception flags
 	typedef struct packed {
-		logic invalid,
-		logic dividedByZero,
-		logic overflow,
-		logic underflow,
-		logic inexact	
+		logic invalid;
+		logic dividedByZero;
+		logic overflow;
+		logic underflow;
+		logic inexact;
 	} exception_flag_t;
 endpackage;

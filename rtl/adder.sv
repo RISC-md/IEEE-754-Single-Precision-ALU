@@ -11,7 +11,9 @@ module adder( // Module performs addition and subtraction on two single-precisio
 
 	output logic [DATA_WIDTH-1:0] result
 );
-
+	
+	localparam int EXTENDED_WIDTH = MANTISSA_WIDTH + 3;
+	
 	operand_format_t operandOneFormatted;
        	operand_format_t operandTwoFormatted;
 	operand_format_t resultFormatted;
@@ -20,24 +22,27 @@ module adder( // Module performs addition and subtraction on two single-precisio
 	logic [EXPONENT_WIDTH-1:0] base;
 	logic [MANTISSA_WIDTH:0] prependedMantissaOne;
 	logic [MANTISSA_WIDTH:0] prependedMantissaTwo;
-	logic [$clog2(MANTISSA_WIDTH):0] leadingZero;
+	logic [EXPONENT_WIDTH-1:0] leadingZero;
 
 	alu_operations_e effectiveOperation;
 	
 	logic magSame;
 	logic magDiffer;
 
-	logic [MANTISSA_WIDTH+1:0] mantissaSum;
-	logic [MANTISSA_WIDTH:0] mantissaDiff;
+	logic [EXTENDED_WIDTH:0] mantissaSum;
+	logic [EXTENDED_WIDTH-1:0] mantissaDiff;
 
-	logic [MANTISSA_WIDTH:0] biggerMantissa;
-	logic [MANTISSA_WIDTH:0] smallerMantissa;
-
-	logic [MANTISSA_WIDTH:0] normalizedDiff;
-	logic [MANTISSA_WIDTH:0] denormalizedDiff;
+	logic [EXTENDED_WIDTH-1:0] normalizedDiff;
+	logic [EXTENDED_WIDTH-1:0] denormalizedDiff;
 
 	logic [EXPONENT_WIDTH-1:0] effectiveExponentOne;
 	logic [EXPONENT_WIDTH-1:0] effectiveExponentTwo;
+
+	logic [EXTENDED_WIDTH-1:0] biggerExtended;
+	logic [EXTENDED_WIDTH-1:0] smallerExtended;
+	logic [EXTENDED_WIDTH-1:0] smallerShifted;
+	logic [EXTENDED_WIDTH-1:0] smallerAligned;
+	logic stickyBit;
 
 	assign magSame = operandOne[DATA_WIDTH-2:0] == operandTwo[DATA_WIDTH-2:0];
 	assign magDiffer = operandOne[DATA_WIDTH-2:0] > operandTwo[DATA_WIDTH-2:0];
@@ -66,21 +71,27 @@ module adder( // Module performs addition and subtraction on two single-precisio
 
 	assign base = (effectiveExponentOne >= effectiveExponentTwo) ? effectiveExponentOne : effectiveExponentTwo;
 	
-	assign biggerMantissa = magDiffer ? prependedMantissaOne : prependedMantissaTwo;
-	assign smallerMantissa = (magDiffer ? prependedMantissaTwo : prependedMantissaOne) >> exponentDifference; 
+	assign biggerExtended  = {(magDiffer ? prependedMantissaOne : prependedMantissaTwo), 2'b00};
+	assign smallerExtended = {(magDiffer ? prependedMantissaTwo : prependedMantissaOne), 2'b00};
+ 
+	assign smallerShifted = smallerExtended >> exponentDifference;
 
-	assign mantissaSum = biggerMantissa + smallerMantissa;
-	assign mantissaDiff = biggerMantissa - smallerMantissa;
+	assign stickyBit = (smallerShifted << exponentDifference) != smallerExtended;
+
+	assign smallerAligned = {smallerShifted[EXTENDED_WIDTH-1:1], smallerShifted[0] | stickyBit};
+
+	assign mantissaSum = biggerExtended + smallerAligned;
+	assign mantissaDiff = biggerExtended - smallerAligned;
 
 	always_ff @(posedge clk or negedge rst_n) begin // Block for computing whole number/exponent portion of result
 		if (!rst_n) begin 
 			resultFormatted.exponent <= '0;
 		end else if (enable) begin
 			if (effectiveOperation == ADD) begin
-				if (mantissaSum[MANTISSA_WIDTH+1]) begin	
+				if (mantissaSum[EXTENDED_WIDTH]) begin	
 					resultFormatted.exponent <= base == 8'hFE ? 8'hFF : base + 1'b1;
 				end else begin
-					if (mantissaSum[MANTISSA_WIDTH] == 1'b0) begin 
+					if (mantissaSum[EXTENDED_WIDTH-1] == 1'b0) begin 
 						resultFormatted.exponent <= '0;
 					end else begin
 						resultFormatted.exponent <= base;
@@ -104,18 +115,18 @@ module adder( // Module performs addition and subtraction on two single-precisio
 			resultFormatted.mantissa <= '0;
 		end else if (enable) begin 
 			if (effectiveOperation == ADD) begin 
-				if (mantissaSum[MANTISSA_WIDTH+1]) begin 
-					resultFormatted.mantissa <= base == 8'hFE ? '0 : mantissaSum[MANTISSA_WIDTH:1];
+				if (mantissaSum[EXTENDED_WIDTH]) begin 
+					resultFormatted.mantissa <= base == 8'hFE ? '0 : mantissaSum[EXTENDED_WIDTH-1 -: MANTISSA_WIDTH];
 				end else begin 
-					resultFormatted.mantissa <= mantissaSum[MANTISSA_WIDTH-1:0];
+					resultFormatted.mantissa <= mantissaSum[EXTENDED_WIDTH-2 -: MANTISSA_WIDTH];
 				end
 			end else begin 
 				if (mantissaDiff == '0) begin 
 					resultFormatted.mantissa <= '0;
 				end else if (leadingZero >= base) begin 
-					resultFormatted.mantissa <= denormalizedDiff[MANTISSA_WIDTH-1:0];
+					resultFormatted.mantissa <= denormalizedDiff[EXTENDED_WIDTH-2 -: MANTISSA_WIDTH];
 				end else begin 
-					resultFormatted.mantissa <= normalizedDiff[MANTISSA_WIDTH-1:0];
+					resultFormatted.mantissa <= normalizedDiff[EXTENDED_WIDTH-2 -: MANTISSA_WIDTH];
 				end
 			end
 		end
@@ -145,10 +156,10 @@ module adder( // Module performs addition and subtraction on two single-precisio
 	end
 
 	always_comb begin 
-		leadingZero = MANTISSA_WIDTH + 1;
-		for (int i = 0; i <= MANTISSA_WIDTH; i++) begin 
+		leadingZero = EXPONENT_WIDTH'(EXTENDED_WIDTH);
+		for (int i = 0; i < EXTENDED_WIDTH; i++) begin 
 			if (mantissaDiff[i]) begin 
-				leadingZero = MANTISSA_WIDTH - i;
+				leadingZero = EXPONENT_WIDTH'(EXTENDED_WIDTH - 1 - i);
 			end
 		end
 	end

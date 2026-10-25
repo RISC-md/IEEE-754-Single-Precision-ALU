@@ -19,6 +19,35 @@ std::mt19937 rng(12345);
 std::uniform_int_distribution<uint32_t> any32;
 std::uniform_int_distribution<int> opDist(0, 1);
 
+struct TestCase { uint32_t a, b; int op; };
+
+const TestCase directed[] = {
+        // Infinity combinations
+        {0x7F800000, 0x7F800000, 1},   // +inf - +inf  -> NaN, invalid
+        {0x7F800000, 0xFF800000, 0},   // +inf + -inf  -> NaN, invalid
+        {0xFF800000, 0xFF800000, 1},   // -inf - -inf  -> NaN, invalid
+        {0x7F800000, 0x7F800000, 0},   // +inf + +inf  -> +inf
+        {0x7F800000, 0xFF800000, 1},   // +inf - -inf  -> +inf
+        {0x3F800000, 0x7F800000, 1},   // 1.0 - +inf   -> -inf
+
+        // NaNs
+        {0x7F800001, 0x3F800000, 0},   // sNaN + 1.0   -> NaN, invalid
+        {0x7FC00000, 0x3F800000, 0},   // qNaN + 1.0   -> NaN, no flags
+        {0x7F800001, 0x7F800000, 0},   // sNaN + +inf  -> NaN, invalid
+        {0x7FC00000, 0x7F800000, 1},   // qNaN - +inf  -> NaN, no flags
+
+        // Signed zeros
+        {0x00000000, 0x00000000, 0},   // +0 + +0 -> +0
+        {0x80000000, 0x80000000, 0},   // -0 + -0 -> -0
+        {0x00000000, 0x80000000, 0},   // +0 + -0 -> +0
+        {0x80000000, 0x00000000, 0},   // -0 + +0 -> +0
+        {0x3F800000, 0x3F800000, 1},   // 1.0 - 1.0 -> +0
+};
+
+bool isNaN(uint32_t x) {
+	return ((x >> 23) & 0xFF) == 0xFF && (x & 0x7FFFFFFF) != 0;
+}
+
 uint32_t reference(uint32_t operandOne, uint32_t operandTwo, int operation, uint32_t& expectedFlags) {
 	float one, two;
         volatile float foperandOne, foperandTwo;
@@ -45,10 +74,6 @@ uint32_t reference(uint32_t operandOne, uint32_t operandTwo, int operation, uint
         return bits;
 }
 
-bool isNaN(uint32_t x) { 
-	return ((x >> 23) & 0xFF) == 0xFF && (x & 0x7FFFFF) != 0; 
-}
-
 void tick() {
 	dut->clk = 0;
 	dut->eval();
@@ -70,6 +95,23 @@ void reset() {
 	dut->rst_n = 1;
 }
 
+void runTest(uint32_t a, uint32_t b, int op) {
+        dut->operandOne = a;
+        dut->operandTwo = b;
+        dut->operation = op;
+        tick();
+
+        uint32_t expectedFlags;
+        uint32_t expected = reference(a, b, op, expectedFlags);
+        bool resultMatches = (dut->result == expected) || (isNaN(dut->result) && isNaN(expected));
+
+        if (!resultMatches || dut->flags != expectedFlags) {
+                printf("op=%d a=%08X b=%08X  expected=%08X flags=%02X  got=%08X flags=%02X\n",
+                       op, a, b, expected, expectedFlags, dut->result, (unsigned)dut->flags);
+                errors++;
+        }
+}
+
 int main(int argc, char** argv) {
 	fesetround(FE_TOWARDZERO);
 	Verilated::commandArgs(argc, argv);
@@ -82,27 +124,13 @@ int main(int argc, char** argv) {
 	reset();
 
 	dut->enable = 1;
+	
+	for (const TestCase& t : directed) {
+        	runTest(t.a, t.b, t.op);
+	}
 
 	while (sim_time <= 200000004) {
-		dut->operandOne = any32(rng);
-		dut->operandTwo = any32(rng);
-		dut->operation = opDist(rng);
-		tick();
-		uint32_t expectedFlags;
-		uint32_t expected = reference(dut->operandOne, dut->operandTwo, dut->operation, expectedFlags);
-		bool resultMatches = (dut->result == expected) || (isNaN(dut->result) && isNaN(expected));
-		if (!resultMatches) {
-			printf("t=%llu, operation=%u, operand one=%08X, operand two=%08X\n",
-                	      (unsigned long long)sim_time, dut->operation, dut->operandOne, dut->operandTwo);
-        		printf("  MISMATCH: expected=%08X got=%08X\n", expected, dut->result);
-        		errors++;
-		}
-		if (dut->flags != expectedFlags) {
-			printf("t=%llu, operation=%u, operand one=%08X, operand two=%08X\n",
-               		      (unsigned long long)sim_time, dut->operation, dut->operandOne, dut->operandTwo);
-        		printf("  FLAG MISMATCH: expected=%02X got=%02X\n", expectedFlags, (unsigned)dut->flags);
-        		errors++;
-		}
+		runTest(any32(rng), any32(rng), opDist(rng));
 	}
 	printf("tests=%llu errors=%d\n", (unsigned long long)((sim_time - 6) / 2), errors);
 	trace->close();

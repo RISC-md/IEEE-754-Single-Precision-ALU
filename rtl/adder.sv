@@ -9,7 +9,8 @@ module adder( // Module performs addition and subtraction on two single-precisio
 	input logic [DATA_WIDTH-1:0] operandTwo,
 	input alu_operations_e operation,
 
-	output logic [DATA_WIDTH-1:0] result
+	output logic [DATA_WIDTH-1:0] result,
+	output exception_flag_t flags
 );
 	
 	localparam int EXTENDED_WIDTH = MANTISSA_WIDTH + 3;
@@ -43,6 +44,49 @@ module adder( // Module performs addition and subtraction on two single-precisio
 	logic [EXTENDED_WIDTH-1:0] smallerShifted;
 	logic [EXTENDED_WIDTH-1:0] smallerAligned;
 	logic stickyBit;
+	
+	exception_flag_t nextFlags;
+
+	logic isNaNSignalOne;
+	logic isNaNSignalTwo;
+	logic isInfinityOne;
+	logic isInfinityTwo;
+
+	logic isNaNOne;
+	logic isNaNTwo;
+
+	logic isSpecial;
+	logic [DATA_WIDTH-1:0] specialResult;
+
+	logic isSpecialLatch;
+	logic [DATA_WIDTH-1:0] specialResultLatch;
+
+	assign isNaNSignalOne = (operandOneFormatted.exponent == 8'hFF) && (operandOneFormatted.mantissa != '0) && (operandOneFormatted.mantissa[MANTISSA_WIDTH-1] == 1'b0);
+	assign isNaNSignalTwo = (operandTwoFormatted.exponent == 8'hFF) && (operandTwoFormatted.mantissa != '0) && (operandTwoFormatted.mantissa[MANTISSA_WIDTH-1] == 1'b0);
+
+	assign isInfinityOne = (operandOneFormatted.exponent == 8'hFF) && (operandOneFormatted.mantissa == '0);
+	assign isInfinityTwo = (operandTwoFormatted.exponent == 8'hFF) && (operandTwoFormatted.mantissa == '0);
+
+	assign isNaNOne = (operandOneFormatted.exponent == 8'hFF) && (operandOneFormatted.mantissa != '0);
+	assign isNaNTwo = (operandTwoFormatted.exponent == 8'hFF) && (operandTwoFormatted.mantissa != '0);
+
+	always_ff @(posedge clk or negedge rst_n) begin
+		if (!rst_n) begin       
+			flags <= '0;
+		end else if (enable) begin  
+			flags <= nextFlags;
+		end
+	end
+
+	always_ff @(posedge clk or negedge rst_n) begin 
+		if (!rst_n) begin 
+			isSpecialLatch <= 0;
+			specialResultLatch <= '0;
+		end else if (enable) begin 
+			isSpecialLatch <= isSpecial;
+			specialResultLatch <= specialResult;
+		end
+	end
 
 	assign magSame = operandOne[DATA_WIDTH-2:0] == operandTwo[DATA_WIDTH-2:0];
 	assign magDiffer = operandOne[DATA_WIDTH-2:0] > operandTwo[DATA_WIDTH-2:0];
@@ -164,5 +208,41 @@ module adder( // Module performs addition and subtraction on two single-precisio
 		end
 	end
 
-	assign result = {resultFormatted.sign, resultFormatted.exponent, resultFormatted.mantissa};
+	always_comb begin
+		nextFlags = '0;
+		
+		nextFlags.invalid = isNaNSignalOne || isNaNSignalTwo || (isInfinityOne && isInfinityTwo && effectiveOperation == SUB);
+
+		if (effectiveOperation == ADD && mantissaSum[EXTENDED_WIDTH] && base == 8'hFE) begin 
+			nextFlags.overflow = 1'b1;
+		end
+
+		if (base != 8'hFF) begin
+			if (effectiveOperation == ADD && ((mantissaSum[EXTENDED_WIDTH] && mantissaSum[2:0] != '0) || (!mantissaSum[EXTENDED_WIDTH] && mantissaSum[1:0] != '0))) begin	
+				nextFlags.inexact = 1'b1;
+			end else if (effectiveOperation == SUB && mantissaDiff != '0 && leadingZero < base && normalizedDiff[1:0] != '0) begin 
+				nextFlags.inexact = 1'b1;
+			end else if (nextFlags.overflow) begin 
+				nextFlags.inexact = 1'b1;
+			end
+		end
+	end
+
+	always_comb begin
+		isSpecial = 1'b0;
+		specialResult = '0;
+		if (base == 8'hFF) begin 
+			isSpecial = 1'b1;
+		end
+
+		if (isNaNOne || isNaNTwo || (isInfinityOne && isInfinityTwo && effectiveOperation == SUB)) begin 
+			specialResult = 32'h7FC0_0000;
+		end else if (isInfinityOne) begin 
+			specialResult = {operandOneFormatted.sign, 8'hFF, 23'b0};
+		end else if (isInfinityTwo) begin 
+			specialResult = {operandTwoFormatted.sign ^ (operation == SUB), 8'hFF, 23'b0};
+		end
+	end
+
+	assign result = isSpecialLatch ? specialResultLatch : {resultFormatted.sign, resultFormatted.exponent, resultFormatted.mantissa};
 endmodule

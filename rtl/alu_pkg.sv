@@ -20,4 +20,13 @@ package alu_pkg; // Package as these are all more or less shared between each op
 		logic [EXPONENT_WIDTH-1:0] exponent;
 		logic [MANTISSA_WIDTH-1:0] mantissa;
 	} operand_format_t;
+
+	// Struct for exception flags
+	typedef struct packed {
+		logic invalid,
+		logic dividedByZero,
+		logic overflow,
+		logic underflow,
+		logic inexact	
+	} exception_flag_t;
 endpackage;

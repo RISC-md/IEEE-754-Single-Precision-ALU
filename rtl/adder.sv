@@ -9,7 +9,7 @@ module adder( // Module performs addition and subtraction on two single-precisio
 	input logic [DATA_WIDTH-1:0] operandTwo,
 	input alu_operations_e operation,
 
-	output logic [DATA_WIDTH-1:0] result,
+	output logic [DATA_WIDTH-1:0] result
 );
 
 	operand_format_t operandOneFormatted;
@@ -36,6 +36,9 @@ module adder( // Module performs addition and subtraction on two single-precisio
 	logic [MANTISSA_WIDTH:0] normalizedDiff;
 	logic [MANTISSA_WIDTH:0] denormalizedDiff;
 
+	logic [EXPONENT_WIDTH-1:0] effectiveExponentOne;
+	logic [EXPONENT_WIDTH-1:0] effectiveExponentTwo;
+
 	assign magSame = operandOne[DATA_WIDTH-2:0] == operandTwo[DATA_WIDTH-2:0];
 	assign magDiffer = operandOne[DATA_WIDTH-2:0] > operandTwo[DATA_WIDTH-2:0];
 
@@ -55,10 +58,13 @@ module adder( // Module performs addition and subtraction on two single-precisio
 		end
 	end
 	
-	assign exponentDifference = (operandOneFormatted.exponent >= operandTwoFormatted.exponent) ? (operandOneFormatted.exponent - operandTwoFormatted.exponent)
-       												   : (operandTwoFormatted.exponent - operandOneFormatted.exponent);
+	assign effectiveExponentOne = (operandOneFormatted.exponent == '0) ? 8'd1 : operandOneFormatted.exponent;
+	assign effectiveExponentTwo = (operandTwoFormatted.exponent == '0) ? 8'd1 : operandTwoFormatted.exponent;
 
-	assign base = (operandOneFormatted.exponent >= operandTwoFormatted.exponent) ? operandOneFormatted.exponent : operandTwoFormatted.exponent;
+	assign exponentDifference = (effectiveExponentOne >= effectiveExponentTwo) ? (effectiveExponentOne - effectiveExponentTwo)
+       										   : (effectiveExponentTwo - effectiveExponentOne);
+
+	assign base = (effectiveExponentOne >= effectiveExponentTwo) ? effectiveExponentOne : effectiveExponentTwo;
 	
 	assign biggerMantissa = magDiffer ? prependedMantissaOne : prependedMantissaTwo;
 	assign smallerMantissa = (magDiffer ? prependedMantissaTwo : prependedMantissaOne) >> exponentDifference; 
@@ -71,10 +77,14 @@ module adder( // Module performs addition and subtraction on two single-precisio
 			resultFormatted.exponent <= '0;
 		end else if (enable) begin
 			if (effectiveOperation == ADD) begin
-				if (mantissaSum[MANTISSA_WIDTH+1] == 1'b1) begin	
+				if (mantissaSum[MANTISSA_WIDTH+1]) begin	
 					resultFormatted.exponent <= base == 8'hFE ? 8'hFF : base + 1'b1;
-				end else begin 
-					resultFormatted.exponent <= base;
+				end else begin
+					if (mantissaSum[MANTISSA_WIDTH] == 1'b0) begin 
+						resultFormatted.exponent <= '0;
+					end else begin
+						resultFormatted.exponent <= base;
+					end
 				end
 			end else begin 
 				if (mantissaDiff == '0 || leadingZero >= base) begin 
@@ -126,9 +136,9 @@ module adder( // Module performs addition and subtraction on two single-precisio
 
 			operandOneFormatted.mantissa = operandOne[DATA_WIDTH - 2 - EXPONENT_WIDTH -: MANTISSA_WIDTH];
 			operandTwoFormatted.mantissa = operandTwo[DATA_WIDTH - 2 - EXPONENT_WIDTH -: MANTISSA_WIDTH];
-
-			prependedMantissaOne = {1'b1, operandOneFormatted.mantissa};
-			prependedMantissaTwo = {1'b1, operandTwoFormatted.mantissa};
+			
+			prependedMantissaOne = (operandOneFormatted.exponent == '0) ? {1'b0, operandOneFormatted.mantissa} : {1'b1, operandOneFormatted.mantissa};
+			prependedMantissaTwo = (operandTwoFormatted.exponent == '0) ? {1'b0, operandTwoFormatted.mantissa} : {1'b1, operandTwoFormatted.mantissa};
 			
 			effectiveOperation = (operandOneFormatted.sign ^ operandTwoFormatted.sign ^ operation == SUB) ? SUB : ADD;
 		end

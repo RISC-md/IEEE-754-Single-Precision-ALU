@@ -89,7 +89,7 @@ module adder( // Module performs addition and subtraction on two single-precisio
 		end else if (enable) begin
 			if (effectiveOperation == ADD) begin
 				if (mantissaSum[EXTENDED_WIDTH]) begin	
-					resultFormatted.exponent <= base == 8'hFE ? 8'hFF : base + 1'b1;
+					resultFormatted.exponent <= base == 8'hFE ? 8'hFE : base + 1'b1;
 				end else begin
 					if (mantissaSum[EXTENDED_WIDTH-1] == 1'b0) begin 
 						resultFormatted.exponent <= '0;
@@ -116,7 +116,7 @@ module adder( // Module performs addition and subtraction on two single-precisio
 		end else if (enable) begin 
 			if (effectiveOperation == ADD) begin 
 				if (mantissaSum[EXTENDED_WIDTH]) begin 
-					resultFormatted.mantissa <= base == 8'hFE ? '0 : mantissaSum[EXTENDED_WIDTH-1 -: MANTISSA_WIDTH];
+					resultFormatted.mantissa <= base == 8'hFE ? '1 : mantissaSum[EXTENDED_WIDTH-1 -: MANTISSA_WIDTH];
 				end else begin 
 					resultFormatted.mantissa <= mantissaSum[EXTENDED_WIDTH-2 -: MANTISSA_WIDTH];
 				end

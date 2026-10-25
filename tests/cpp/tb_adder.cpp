@@ -70,7 +70,7 @@ int main(int argc, char** argv) {
 
 	dut->enable = 1;
 
-	while (sim_time < 2000000) {
+	while (sim_time <= 200000004) {
 		dut->operandOne = randomFinite();
 		dut->operandTwo = randomFinite();
 		dut->operation = opDist(rng);

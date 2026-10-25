@@ -1,0 +1,30 @@
+# Verilator build output
+obj_dir/
+**/obj_dir/
+ 
+# Waveforms
+*.vcd
+*.fst
+*.ghw
+*.wlf
+ 
+# GTKWave save files (remove this line if you want to commit your signal layouts)
+*.gtkw
+ 
+# Compiled objects and binaries
+*.o
+*.a
+*.so
+*.d
+*.out
+ 
+# Simulation logs
+*.log
+ 
+# Editor and OS clutter
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store

@@ -10,7 +10,9 @@ module divider( // Module performs division on two single-precision floats
         input alu_operations_e operation,
 
         output logic [DATA_WIDTH-1:0] result,
-        output exception_flag_t flags;
+        output exception_flag_t flags,
+
+	output logic done
 );
 
         operand_format_t operandOneFormatted;

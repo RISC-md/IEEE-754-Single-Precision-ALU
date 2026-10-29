@@ -21,7 +21,7 @@ module multiplier( // Module performs multiplicaton on two single-precision floa
        	operand_format_t operandTwoFormatted;
 	operand_format_t resultFormatted;
 
-	logic [EXTENDED_WIDTH-1:0] exponent;
+	logic signed [EXTENDED_WIDTH-1:0] exponent;
 
 	logic [MANTISSA_WIDTH:0] prependedMantissaOne;
 	logic [MANTISSA_WIDTH:0] prependedMantissaTwo;
@@ -29,6 +29,7 @@ module multiplier( // Module performs multiplicaton on two single-precision floa
 	logic [MANTISSA_PRODUCT_WIDTH-1:0] prependedMantissaProduct;
 
 	logic [MANTISSA_PRODUCT_WIDTH-1:0] normalizedMantissaProduct;
+	logic [MANTISSA_PRODUCT_WIDTH-1:0] denormalizedMantissaProduct;
 	
 	always_ff @(posedge clk or negedge rst_n) begin // Block for determining sign of result
 		if (!rst_n) begin 
@@ -46,15 +47,17 @@ module multiplier( // Module performs multiplicaton on two single-precision floa
 		end else if (enable) begin 
 			if (operation == MUL) begin 
 				if (prependedMantissaProduct[MANTISSA_PRODUCT_WIDTH-1]) begin 
-					if (exponent >= $signed(10'd254)) begin 
-						resultFormatted.exponent <= 8'hFF;
+					if (exponent >= 10'sd254) begin 
+						resultFormatted.exponent <= 8'hFE;
+					end else if (exponent <= -1) begin
+						resultFormatted.exponent <= 8'h00;
 					end else begin
 						resultFormatted.exponent <= exponent[EXPONENT_WIDTH-1:0] + 1'b1;
 					end
 				end else begin 
-					if (exponent >= $signed(10'd254)) begin 
-						resultFormatted.exponent <= 8'hFF;
-					end else if (exponent < $signed(10'd1) begin 
+					if (exponent > 10'sd254) begin 
+						resultFormatted.exponent <= 8'hFE;
+					end else if (exponent < 10'sd1) begin 
 						resultFormatted.exponent <= 8'h00;
 					end else begin	
 						resultFormatted.exponent <= exponent[EXPONENT_WIDTH-1:0];
@@ -69,7 +72,13 @@ module multiplier( // Module performs multiplicaton on two single-precision floa
 			resultFormatted.mantissa <= '0;
 		end else if (enable) begin
 			if (operation == MUL) begin
-				resultFormatted.mantissa <= normalizedMantissaProduct[MANTISSA_PRODUCT_WIDTH - 3 -: MANTISSA_WIDTH];
+				if ((prependedMantissaProduct[MANTISSA_PRODUCT_WIDTH-1] && exponent >= 10'sd254) || (!prependedMantissaProduct[MANTISSA_PRODUCT_WIDTH-1] && exponent > 10'sd254)) begin	
+					resultFormatted.mantissa <= '1;
+				end else if (exponent <= 0) begin 
+					resultFormatted.mantissa <= denormalizedMantissaProduct[MANTISSA_PRODUCT_WIDTH - 3 -: MANTISSA_WIDTH];
+				end else begin
+					resultFormatted.mantissa <= normalizedMantissaProduct[MANTISSA_PRODUCT_WIDTH - 3 -: MANTISSA_WIDTH];
+				end
 			end
 		end
 	end
@@ -82,6 +91,7 @@ module multiplier( // Module performs multiplicaton on two single-precision floa
 		prependedMantissaTwo = '0;
 		prependedMantissaProduct = '0;
 		normalizedMantissaProduct = '0;
+		denormalizedMantissaProduct = '0;
 		if (enable) begin
 			operandOneFormatted.sign = operandOne[DATA_WIDTH - 1];
 			operandTwoFormatted.sign = operandTwo[DATA_WIDTH - 1];
@@ -100,6 +110,7 @@ module multiplier( // Module performs multiplicaton on two single-precision floa
 			prependedMantissaProduct = prependedMantissaOne * prependedMantissaTwo;
 
 			normalizedMantissaProduct = prependedMantissaProduct[MANTISSA_PRODUCT_WIDTH-1] ? prependedMantissaProduct >> 1 : prependedMantissaProduct;
+			denormalizedMantissaProduct = prependedMantissaProduct >> (1 - exponent);
 
 		end
 	end	

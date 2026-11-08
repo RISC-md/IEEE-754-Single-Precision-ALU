@@ -31,7 +31,13 @@ const TestCase directed[] = {
         {0x7F000000, 0x7F000000},   // 2^127 * 2^127 -> overflow, max finite
         {0x20000000, 0x20000000},   // 2^-63 * 2^-63 = 2^-126, smallest normal
         {0x1F800000, 0x1F800000},   // 2^-64 * 2^-64 = 2^-128 -> denormal result
-        {0x0C000000, 0x0C000000},   // 2^-103 * 2^-103 -> truncates to +0
+	{0x0C000000, 0x0C000000},   // 2^-103 * 2^-103 -> truncates to +0
+	{0x00400000, 0x40000000},   // 2^-127 * 2.0      = 2^-126  -> 00800000
+	{0x00000001, 0x7F000000},   // 2^-149 * 2^127    = 2^-22   -> 34800000
+	{0x007FFFFF, 0x40000000},   // largest denormal * 2.0       -> 00FFFFFE
+	{0x00000001, 0x00000001},   // denormal * denormal          -> +0
+	{0x00000000, 0x3F800000},   // +0 * 1.0  -> +0
+	{0x80000000, 0x40400000}  // -0 * 3.0  -> -0
 };
 
 bool isNaN(uint32_t x) {
@@ -43,7 +49,7 @@ uint32_t randomNormal() {
         do { 
 		x = any32(rng); 
 		e = (x >> 23) & 0xFF; 
-	} while (e == 0x00 || e == 0xFF);
+	} while (e == 0xFF);
         return x;
 }
 

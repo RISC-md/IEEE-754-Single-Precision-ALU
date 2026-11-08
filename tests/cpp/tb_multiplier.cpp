@@ -17,7 +17,6 @@ int errors = 0;
 
 std::mt19937 rng(12345);
 std::uniform_int_distribution<uint32_t> any32;
-std::uniform_int_distribution<int> opDist(0, 1);
 
 struct TestCase { 
 	uint32_t a, b;
@@ -37,20 +36,20 @@ const TestCase directed[] = {
 	{0x007FFFFF, 0x40000000},   // largest denormal * 2.0       -> 00FFFFFE
 	{0x00000001, 0x00000001},   // denormal * denormal          -> +0
 	{0x00000000, 0x3F800000},   // +0 * 1.0  -> +0
-	{0x80000000, 0x40400000}  // -0 * 3.0  -> -0
+	{0x80000000, 0x40400000},   // -0 * 3.0  -> -0
+        {0x7F800000, 0x40000000},   // +inf * 2.0      -> +inf
+        {0x7F800000, 0xC0000000},   // +inf * -2.0     -> -inf
+        {0xFF800000, 0xFF800000},   // -inf * -inf     -> +inf
+        {0x7F800000, 0x00000000},   // +inf * +0       -> NaN, invalid
+        {0x80000000, 0xFF800000},   // -0 * -inf       -> NaN, invalid
+        {0x7F800000, 0x00000001},   // +inf * denormal -> +inf (not NaN)
+        {0x7FC00000, 0x40000000},   // qNaN * 2.0      -> NaN, no flags
+        {0x7F800001, 0x40000000},   // sNaN * 2.0      -> NaN, invalid
+        {0x7F800001, 0x00000000}    // sNaN * 0        -> NaN, invalid
 };
 
 bool isNaN(uint32_t x) {
 	return ((x >> 23) & 0xFF) == 0xFF && (x & 0x7FFFFF) != 0;
-}
-
-uint32_t randomNormal() {
-        uint32_t x, e;
-        do { 
-		x = any32(rng); 
-		e = (x >> 23) & 0xFF; 
-	} while (e == 0xFF);
-        return x;
 }
 
 uint32_t reference(uint32_t operandOne, uint32_t operandTwo, int operation, uint32_t& expectedFlags) {
@@ -110,9 +109,9 @@ void runTest(uint32_t a, uint32_t b, int op) {
         uint32_t expected = reference(a, b, op, expectedFlags);
         bool resultMatches = (dut->result == expected) || (isNaN(dut->result) && isNaN(expected));
 
-        if (!resultMatches) {
-                printf("op=%d a=%08X b=%08X  expected=%08X  got=%08X\n",
-                       op, a, b, expected, dut->result);
+        if (!resultMatches || dut->flags != expectedFlags) {
+                printf("op=%d a=%08X b=%08X | expected=%08X flags=%02X | got=%08X flags=%02X\n",
+                       op, a, b, expected, expectedFlags, dut->result, (unsigned)dut->flags);
                 errors++;
         }
 }
@@ -135,7 +134,7 @@ int main(int argc, char** argv) {
 	}
 
 	while (sim_time <= 200000004) {
-		runTest(randomNormal(), randomNormal(), 2);
+		runTest(any32(rng), any32(rng), 2);
 	}
 	printf("tests=%llu errors=%d\n", (unsigned long long)((sim_time - 6) / 2), errors);
 	trace->close();

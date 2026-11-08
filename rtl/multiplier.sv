@@ -206,8 +206,12 @@ module multiplier( // Module performs multiplicaton on two single-precision floa
 
 	always_comb begin
 	        int dropShift;
-        	dropShift = (exponent <= 0) ? (1 - exponent) : prependedMantissaProduct[MANTISSA_PRODUCT_WIDTH-1];
-		
+        	if (exponent <= 0) begin
+        		dropShift = 1 - exponent;
+		end else begin
+        		dropShift = prependedMantissaProduct[MANTISSA_PRODUCT_WIDTH-1];
+		end
+
 		nextFlags = '0;
 
 		nextFlags.invalid = isNaNOneSignaling || isNaNTwoSignaling || (isInfinityOne && isZeroTwo) || (isInfinityTwo && isZeroOne);

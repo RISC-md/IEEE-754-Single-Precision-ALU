@@ -57,6 +57,50 @@ module multiplier( // Module performs multiplicaton on two single-precision floa
 
 	assign adjustedExponentOne = effectiveExponentOne - leadingZeroOne;
 	assign adjustedExponentTwo = effectiveExponentTwo - leadingZeroTwo;
+
+	logic isInfinityOne;
+	logic isInfinityTwo;
+
+	logic isSpecial;
+	logic isSpecialLatch;
+
+	logic [DATA_WIDTH-1:0] specialResult;
+	logic [DATA_WIDTH-1:0] specialResultLatch;
+
+	logic isNaNOne;
+	logic isNaNTwo;
+
+	logic isNaNOneSignaling;
+	logic isNaNTwoSignaling;
+
+	assign isNaNOne = (operandOneFormatted.exponent == 8'hFF) && (operandOneFormatted.mantissa != '0);
+	assign isNaNTwo = (operandTwoFormatted.exponent == 8'hFF) && (operandTwoFormatted.mantissa != '0);
+
+	assign isNaNOneSignaling = (operandOneFormatted.exponent == 8'hFF) && (operandOneFormatted.mantissa != '0) && (operandOneFormatted.mantissa[MANTISSA_WIDTH-1] == 1'b0);
+	assign isNaNTwoSignaling = (operandTwoFormatted.exponent == 8'hFF) && (operandTwoFormatted.mantissa != '0) && (operandTwoFormatted.mantissa[MANTISSA_WIDTH-1] == 1'b0);
+
+	assign isInfinityOne = (operandOneFormatted.exponent == 8'hFF) && (operandOneFormatted.mantissa == '0);
+	assign isInfinityTwo = (operandTwoFormatted.exponent == 8'hFF) && (operandTwoFormatted.mantissa == '0);
+
+	exception_flag_t nextFlags;
+
+	always_ff @(posedge clk or negedge rst_n) begin 
+		if (!rst_n) begin 
+			flags <= '0;
+		end else if (enable) begin 
+			flags <= nextFlags;
+		end
+	end
+
+	always_ff @(posedge clk or negedge rst_n) begin 
+		if (!rst_n) begin 
+			isSpecialLatch <= 0;
+			specialResultLatch <= '0;
+		end else if (enable) begin 
+			isSpecialLatch <= isSpecial;
+			specialResultLatch <= specialResult;
+		end
+	end
 	
 	always_ff @(posedge clk or negedge rst_n) begin // Block for determining sign of result
 		if (!rst_n) begin 
@@ -160,5 +204,36 @@ module multiplier( // Module performs multiplicaton on two single-precision floa
         	end
 	end
 
-	assign result = {resultFormatted.sign, resultFormatted.exponent, resultFormatted.mantissa};
+	always_comb begin
+	        int dropShift;
+        	dropShift = (exponent <= 0) ? (1 - exponent) : prependedMantissaProduct[MANTISSA_PRODUCT_WIDTH-1];
+		
+		nextFlags = '0;
+
+		nextFlags.invalid = isNaNOneSignaling || isNaNTwoSignaling || (isInfinityOne && isZeroTwo) || (isInfinityTwo && isZeroOne);
+
+		nextFlags.overflow = !isSpecial && ((prependedMantissaProduct[MANTISSA_PRODUCT_WIDTH-1] && exponent >= 10'sd254) || (!prependedMantissaProduct[MANTISSA_PRODUCT_WIDTH-1] && exponent > 10'sd254));
+		
+		nextFlags.inexact  = !isSpecial && (nextFlags.overflow || (((prependedMantissaProduct >> (dropShift + MANTISSA_WIDTH)) << (dropShift + MANTISSA_WIDTH)) != prependedMantissaProduct));
+
+		nextFlags.underflow = !isSpecial && !nextFlags.overflow && ((prependedMantissaProduct[MANTISSA_PRODUCT_WIDTH-1] && exponent <= -1) || 
+			              (!prependedMantissaProduct[MANTISSA_PRODUCT_WIDTH-1] && exponent <= 0)) && nextFlags.inexact;
+	end
+
+	always_comb begin 
+		isSpecial = 0;
+		specialResult = 0;
+
+		if (operandOneFormatted.exponent == 8'hFF || operandTwoFormatted.exponent == 8'hFF) begin 
+			isSpecial = 1;
+		end
+
+		if(isNaNOne || isNaNTwo || (isInfinityOne && isZeroTwo) || (isInfinityTwo && isZeroOne)) begin 
+			specialResult = 32'h7FC0_0000;
+		end else begin 
+			specialResult = {operandOneFormatted.sign ^ operandTwoFormatted.sign, 8'hFF, 23'b0};
+		end
+	end
+
+	assign result = isSpecialLatch ? specialResultLatch : {resultFormatted.sign, resultFormatted.exponent, resultFormatted.mantissa};
 endmodule

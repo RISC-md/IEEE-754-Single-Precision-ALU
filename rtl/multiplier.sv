@@ -30,6 +30,33 @@ module multiplier( // Module performs multiplicaton on two single-precision floa
 
 	logic [MANTISSA_PRODUCT_WIDTH-1:0] normalizedMantissaProduct;
 	logic [MANTISSA_PRODUCT_WIDTH-1:0] denormalizedMantissaProduct;
+
+	logic isZeroOne;
+	logic isZeroTwo;
+	
+	logic signed [EXTENDED_WIDTH-1:0] effectiveExponentOne;
+	logic signed [EXTENDED_WIDTH-1:0] effectiveExponentTwo;
+
+	logic signed [EXTENDED_WIDTH-1:0] leadingZeroOne;
+	logic signed [EXTENDED_WIDTH-1:0] leadingZeroTwo;
+
+	logic [MANTISSA_WIDTH:0] normalizedSignificandOne;
+	logic [MANTISSA_WIDTH:0] normalizedSignificandTwo;
+
+	logic signed [EXTENDED_WIDTH-1:0] adjustedExponentOne;
+	logic signed [EXTENDED_WIDTH-1:0] adjustedExponentTwo;
+
+	assign isZeroOne = operandOne[DATA_WIDTH-2:0] == '0;
+	assign isZeroTwo = operandTwo[DATA_WIDTH-2:0] == '0;
+
+	assign effectiveExponentOne = operandOneFormatted.exponent == '0 ? 1 : EXTENDED_WIDTH'(operandOneFormatted.exponent);
+	assign effectiveExponentTwo = operandTwoFormatted.exponent == '0 ? 1 : EXTENDED_WIDTH'(operandTwoFormatted.exponent);
+
+	assign normalizedSignificandOne = prependedMantissaOne << leadingZeroOne;
+	assign normalizedSignificandTwo = prependedMantissaTwo << leadingZeroTwo;
+
+	assign adjustedExponentOne = effectiveExponentOne - leadingZeroOne;
+	assign adjustedExponentTwo = effectiveExponentTwo - leadingZeroTwo;
 	
 	always_ff @(posedge clk or negedge rst_n) begin // Block for determining sign of result
 		if (!rst_n) begin 
@@ -102,18 +129,36 @@ module multiplier( // Module performs multiplicaton on two single-precision floa
 			operandOneFormatted.mantissa = operandOne[DATA_WIDTH - 2 - EXPONENT_WIDTH -: MANTISSA_WIDTH];
 			operandTwoFormatted.mantissa = operandTwo[DATA_WIDTH - 2 - EXPONENT_WIDTH -: MANTISSA_WIDTH];
 
-			exponent = operandOneFormatted.exponent + operandTwoFormatted.exponent - BIAS;
+			if (isZeroOne || isZeroTwo) begin
+				exponent = '0;
+			end else begin 
+				exponent = adjustedExponentOne + adjustedExponentTwo - BIAS;
+			end
 
 			prependedMantissaOne = (operandOneFormatted.exponent == '0) ? {1'b0, operandOneFormatted.mantissa} : {1'b1, operandOneFormatted.mantissa};
                         prependedMantissaTwo = (operandTwoFormatted.exponent == '0) ? {1'b0, operandTwoFormatted.mantissa} : {1'b1, operandTwoFormatted.mantissa};
 
-			prependedMantissaProduct = prependedMantissaOne * prependedMantissaTwo;
+			prependedMantissaProduct = normalizedSignificandOne * normalizedSignificandTwo;
 
 			normalizedMantissaProduct = prependedMantissaProduct[MANTISSA_PRODUCT_WIDTH-1] ? prependedMantissaProduct >> 1 : prependedMantissaProduct;
 			denormalizedMantissaProduct = prependedMantissaProduct >> (1 - exponent);
 
 		end
-	end	
+	end
+
+	always_comb begin
+        	leadingZeroOne = EXTENDED_WIDTH'(MANTISSA_WIDTH + 1);
+        	leadingZeroTwo = EXTENDED_WIDTH'(MANTISSA_WIDTH + 1);
+        	for (int i = 0; i <= MANTISSA_WIDTH; i++) begin
+			if (prependedMantissaOne[i]) begin
+		       		leadingZeroOne = EXTENDED_WIDTH'(MANTISSA_WIDTH - i);
+			end
+
+			if (prependedMantissaTwo[i]) begin
+				leadingZeroTwo = EXTENDED_WIDTH'(MANTISSA_WIDTH - i);
+			end
+        	end
+	end
 
 	assign result = {resultFormatted.sign, resultFormatted.exponent, resultFormatted.mantissa};
 endmodule

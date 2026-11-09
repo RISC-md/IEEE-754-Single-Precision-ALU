@@ -12,7 +12,7 @@ module adder( // Module performs addition and subtraction on two single-precisio
 	output logic [DATA_WIDTH-1:0] result,
 	output exception_flag_t flags,
 
-	output logic done
+	//output logic done
 );
 	
 	localparam int EXTENDED_WIDTH = MANTISSA_WIDTH + 3;

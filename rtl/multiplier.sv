@@ -12,7 +12,7 @@ module multiplier( // Module performs multiplicaton on two single-precision floa
 	output logic [DATA_WIDTH-1:0] result,
 	output exception_flag_t flags,
 
-	output logic done	
+	//output logic done	
 );
 	localparam int EXTENDED_WIDTH = EXPONENT_WIDTH + 2;
 	localparam int MANTISSA_PRODUCT_WIDTH = MANTISSA_WIDTH * 2 + 2;

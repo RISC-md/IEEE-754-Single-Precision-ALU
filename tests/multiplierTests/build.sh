@@ -36,6 +36,7 @@ esac
 verilator --cc --exe --build -j 0 -Wall -Wno-fatal --trace \
     --top-module multiplier \
     -CFLAGS "-frounding-math" \
+    -MAKEFLAGS "OPT_FAST=-O0 OPT_SLOW=-O0 OPT_GLOBAL=-O0" \
     "$RTL_DIR/alu_pkg.sv" "$RTL_DIR/multiplier.sv" "$TB"
  
 if [ "$MODE" = "run" ]; then

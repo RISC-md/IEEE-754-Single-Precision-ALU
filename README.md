@@ -35,13 +35,13 @@ I will be implementing my desing on an Arty S7-25 later today.
 IEEE-754-Single-Precision-ALU/
 ├── .gitignore
 ├── rtl/
-│   ├── alu\_pkg.sv             # Shared parameters, ALU operation enum, operand struct, exception flags struct
+│   ├── alu_pkg.sv             # Shared parameters, ALU operation enum, operand struct, exception flags struct
 │   ├── adder.sv                # Adder/subtractor logic
 │   └── multiplier.sv           # Multiplier logic
 └── tests/
     ├── cpp/
-    │   ├── tb\_adder.cpp        # Directed and 100M random tested against C++ -O0 and no -ffast-math float reference
-    │   └── tb\_multiplier.cpp   # Directed and 100M random tested against C++ -O0 and no -ffast-math float reference
+    │   ├── tb_adder.cpp        # Directed and 100M random tested against C++ -O0 and no -ffast-math float reference
+    │   └── tb_multiplier.cpp   # Directed and 100M random tested against C++ -O0 and no -ffast-math float reference
     ├── adderTests/
     │   └── build.sh            # Build script to run Verilator testbench on adder.sv
     └── multiplierTests/

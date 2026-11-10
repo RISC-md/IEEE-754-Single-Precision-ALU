@@ -3,6 +3,7 @@
 Based off of the IEEE 754 standard, this ALU currently supports addition, subtraction, and multiplication of 32-bit signed floats!
 
 ## Design
+<img width="1224" height="587" alt="image" src="https://github.com/user-attachments/assets/5faf4caf-d062-41db-9528-59f2e6bb55ac" />
 
 I chose to go with a single cycle approach where each part of the result, sign, exponent, and mantissa, were computed in parallel as this is a stand alone ALU and not a part of a bigger system such as a CPU.
 

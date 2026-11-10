@@ -11,8 +11,6 @@ module top(
 
 	output logic [DATA_WIDTH-1:0] result,
 	output exception_flag_t flags
-
-	//output done;
 );
 	logic [DATA_WIDTH-1:0] adderResult;
 	logic [DATA_WIDTH-1:0] multiplierResult;
@@ -57,5 +55,5 @@ module top(
 	end
 
 	assign result = resultFlop;
-	assign flags <= flagFlop;
+	assign flags = flagFlop;
 endmodule

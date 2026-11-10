@@ -29,6 +29,7 @@ All tests
 I will be implementing my desing on an Arty S7-25 later today.
 
 ## Repository Structure
+```text
 
 IEEE-754-Single-Precision-ALU/
 ├── .gitignore
@@ -43,4 +44,5 @@ IEEE-754-Single-Precision-ALU/
     ├── adderTests/
     │   └── build.sh            # Build script to run Verilator testbench on adder.sv
     └── multiplierTests/
-        └── build.sh            # Build script to run Verilator testbench on multiplier.sv
+        └── build.sh            # Build script to run Verilator testbench on adder.sv
+```

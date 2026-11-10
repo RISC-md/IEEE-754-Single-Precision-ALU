@@ -12,36 +12,57 @@ module top(
 	output logic [DATA_WIDTH-1:0] result,
 	output exception_flag_t flags
 );
+	logic [DATA_WIDTH-1:0] operandOneSync;
+	logic [DATA_WIDTH-1:0] operandTwoSync;
+	alu_operations_e operationSync1;
+	logic enableSync1;
+	
 	logic [DATA_WIDTH-1:0] adderResult;
 	logic [DATA_WIDTH-1:0] multiplierResult;
-	//logic [DATA_WIDTH-1:0] dividerResult;
 
 	exception_flag_t adderFlags;
 	exception_flag_t multiplierFlags;
-	//exception_flag_t dividerFlags;
-
-	//logic adderDone;
-	//logic multiplierDone;
-	//logic dividerDone;
 
 	logic [DATA_WIDTH-1:0] resultFlop;
 	exception_flag_t flagFlop;
-	//logic doneFlop;
 
-	//logic ready;
-	//logic processing;
+	alu_operations_e operationSync2;
+	logic enableSync2;
 
-	adderInst adder(.clk(clk), .rst_n(rst_n), .enable(enable), .operandOne(operandOne), .operandTwo(operandTwo), .operation(operation), .result(adderResult), .flags(adderFlags));
+	adder adderInst(.clk(clk), .rst_n(rst_n), .enable(enableSync1), .operandOne(operandOneSync), .operandTwo(operandTwoSync), .operation(operationSync1), .result(adderResult), .flags(adderFlags));
 
-	multiplierInst multiplier(.clk(clk), .rst_n(rst_n), .enable(enable), .operandOne(operandOne), .operandTwo(operandTwo), .operation(operation), .result(multiplierResult), .flags(multiplierFlags));
+	multiplier multiplierInst(.clk(clk), .rst_n(rst_n), .enable(enableSync1), .operandOne(operandOneSync), .operandTwo(operandTwoSync), .operation(operationSync1), .result(multiplierResult), .flags(multiplierFlags));
+	
+	always_ff @(posedge clk or negedge rst_n) begin 
+		if (!rst_n) begin 
+			operationSync2 <= ADD;
+			enableSync2 <= 1'b0;
+		end else begin 
+			operationSync2 <= operationSync1;
+			enableSync2 <= enableSync1;
+		end
+	end
 
-	// dividerInst divider(.clk(clk), .rst_n(rst_n), .enable(enable), .operandOne(operandOne), .operandTwo(operandTwo), .operation(operation), .result(dividerResult), .flags(dividerFlags), .done(dividerDone));
+	always_ff @(posedge clk or negedge rst_n) begin 
+		if (!rst_n) begin 
+			operandOneSync <= '0;
+			operandTwoSync <= '0;
+			operationSync1 <= ADD;
+			enableSync1 <= 1'b0;
+		end else begin 
+			operandOneSync <= operandOne;
+			operandTwoSync <= operandTwo;
+			operationSync1 <= operation;
+			enableSync1 <= enable;
+		end
+	end
+
 	always_ff @(posedge clk or negedge rst_n) begin
 		if (!rst_n) begin
 			resultFlop <= '0;
 			flagFlop <= '0;
-		end else if (enable) begin 
-			case(operation) 
+		end else if (enableSync2) begin 
+			case(operationSync2) 
 				ADD, SUB : begin
 				       	resultFlop <= adderResult;
 			       	       	flagFlop <= adderFlags;	       

@@ -22,7 +22,7 @@ Will get number later today.
 
 I used the C++ library Verilator to unit test each module using around 100 million random tests as well as having directed cases for NaN, infinity, 0, and maximum values as these values, even with 100 million randomly generated cases, may not occur so I added them to ensure full coverage.
 
-All tests
+All tests use floats with 0 optimization (-O0) and no -ffast-math, in order to, fully comply with the IEEE 754 specification and ensure literal correctness with no optimization.
 
 ## Implementation
 

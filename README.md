@@ -3,7 +3,7 @@
 Based off of the IEEE 754 standard, this ALU currently supports addition, subtraction, and multiplication of 32-bit signed floats!
 
 ## Design
-<img width="1224" height="587" alt="image" src="https://github.com/user-attachments/assets/5faf4caf-d062-41db-9528-59f2e6bb55ac" />
+<img width="1226" height="584" alt="image" src="https://github.com/user-attachments/assets/34428239-e8dd-4f28-a23b-7e70ee68d367" />
 
 I chose to go with a single cycle approach where each part of the result, sign, exponent, and mantissa, were computed in parallel as this is a stand alone ALU and not a part of a bigger system such as a CPU.
 
@@ -13,11 +13,22 @@ A tradeoff with using the single cycle design is that some most computation occu
 
 ### Resource Utilization
 
-Will get numbers later today.
+| Resource        | Used | Available | Utilization |
+|-----------------|-----:|----------:|------------:|
+| Slice LUTs      | 1137 |    14,600 |       7.79% |
+| Flip-Flops      |  187 |    29,200 |       0.64% |
+| DSP48E1         |    2 |        80 |       2.50% |
 
-### Timing
+### Timing/Power
 
-Will get number later today.
+| Timing / Power            | Result                         |
+|---------------------------|--------------------------------|
+| Clock                     | 47 MHz (single-cycle units)    |
+| Worst negative slack      | +0.166 ns                      |
+| Worst hold slack          | +0.200 ns                      |
+| Total on-chip power       | 0.077 W                        |
+
+Closed timing at 47.619 MHz. This is somewhat the speed I expected for a design that requires so much computation and wasn't pipelined to accommodate that fact.
 
 ## Verification
 
@@ -27,7 +38,7 @@ All tests use floats with 0 optimization (-O0) and no -ffast-math, in order to, 
 
 ## Implementation
 
-I will be implementing my desing on an Arty S7-25 later today.
+This design was implemented on an Arty S7-25.
 
 ## Repository Structure
 ```text
@@ -35,7 +46,7 @@ I will be implementing my desing on an Arty S7-25 later today.
 IEEE-754-Single-Precision-ALU/
 ├── .gitignore
 ├── rtl/
-│   ├── alu_pkg.sv             # Shared parameters, ALU operation enum, operand struct, exception flags struct
+│   ├── alu_pkg.sv              # Shared parameters, ALU operation enum, operand struct, exception flags struct
 │   ├── adder.sv                # Adder/subtractor logic
 │   └── multiplier.sv           # Multiplier logic
 └── tests/

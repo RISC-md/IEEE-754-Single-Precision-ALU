@@ -40,6 +40,10 @@ All tests use floats with 0 optimization (-O0) and no -ffast-math, in order to, 
 
 This design was implemented on an Arty S7-25.
 
+## After Thoughts
+
+If I were to do this project over again, I would do it completely differently. I would make a 2-stage pipeline for the adder and multiplier, which would first compute fields like the `prependedMantissa`, and then assign fields. This would consequently cause the combinational path to shrink immensely and allow for much higher throughput. 
+
 ## Repository Structure
 ```text
 
